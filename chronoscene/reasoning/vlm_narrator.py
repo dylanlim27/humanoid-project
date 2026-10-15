@@ -38,17 +38,17 @@ class SceneDifferenceReport:
         if self.moved_descriptions:
             lines.append("### Moved Objects")
             for desc in self.moved_descriptions:
-                lines.append(f"- 🔄 {desc}")
+                lines.append(f"- [MOVED] {desc}")
 
         if self.added_descriptions:
             lines.append("### Newly Added Objects")
             for desc in self.added_descriptions:
-                lines.append(f"- ➕ {desc}")
+                lines.append(f"- [ADDED] {desc}")
 
         if self.removed_descriptions:
             lines.append("### Removed Objects")
             for desc in self.removed_descriptions:
-                lines.append(f"- ❌ {desc}")
+                lines.append(f"- [REMOVED] {desc}")
 
         lines.extend([
             "",

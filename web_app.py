@@ -25,80 +25,66 @@ from chronoscene.reasoning.instance_matcher import ObjectChangeType
 
 
 st.set_page_config(
-    page_title="ChronoScene-3D | Embodied 3D Scene Differencing",
-    page_icon="🤖",
+    page_title="ChronoScene-3D | 3D Spatial Differencing",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom Styling
+# Clean research laboratory styling
 st.markdown("""
 <style>
     .main-header {
-        font-size: 2.2rem;
-        font-weight: 700;
-        background: linear-gradient(90deg, #58a6ff, #bc8cff);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        margin-bottom: 4px;
+        font-size: 1.9rem;
+        font-weight: 600;
+        color: #e6edf3;
+        margin-bottom: 2px;
+        letter-spacing: -0.5px;
     }
     .sub-header {
-        font-size: 1.05rem;
+        font-size: 0.95rem;
         color: #8b949e;
-        margin-bottom: 24px;
+        margin-bottom: 20px;
     }
     .metric-card {
         background-color: #161b22;
         border: 1px solid #30363d;
-        border-radius: 8px;
-        padding: 16px;
-        text-align: center;
+        border-radius: 6px;
+        padding: 12px 16px;
+        text-align: left;
     }
     .metric-val {
-        font-size: 1.8rem;
-        font-weight: 700;
+        font-size: 1.6rem;
+        font-weight: 600;
         color: #58a6ff;
     }
     .metric-lbl {
-        font-size: 0.85rem;
+        font-size: 0.75rem;
         color: #8b949e;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        margin-top: 4px;
     }
-    .badge-tag {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 12px;
-        font-size: 0.75rem;
-        font-weight: 600;
-        margin-right: 6px;
-    }
-    .badge-moved { background-color: #d29922; color: #000; }
-    .badge-added { background-color: #238636; color: #fff; }
-    .badge-removed { background-color: #da3633; color: #fff; }
-    .badge-unobserved { background-color: #1f6feb; color: #fff; }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-header">🤖 ChronoScene-3D</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-header">Embodied Multi-View 3D Scene Differencing & Spatial Change Grounding from Monocular Phone Video</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-header">ChronoScene-3D</div>', unsafe_allow_html=True)
+st.markdown('<div class="sub-header">Multi-View 3D Scene Differencing & Spatial Change Grounding from Monocular Phone Video</div>', unsafe_allow_html=True)
 
 # Sidebar
-st.sidebar.header("⚙️ Configuration & Mode")
+st.sidebar.header("Configuration & Data Source")
 mode = st.sidebar.radio(
-    "Data Source",
-    ["Indoor Benchmark (Instant)", "Upload Phone Videos (MP4/MOV)"]
+    "Source Mode",
+    ["Indoor Tabletop Benchmark", "Upload Custom Videos (MP4/MOV)"]
 )
 
-st.sidebar.subheader("3D Geometry Parameters")
+st.sidebar.subheader("Geometric Parameters")
 voxel_size = st.sidebar.slider("Voxel Resolution (m)", 0.01, 0.05, 0.02, 0.005)
 static_thresh = st.sidebar.slider("Static Distance Tolerance (m)", 0.02, 0.08, 0.04, 0.005)
 motion_thresh = st.sidebar.slider("Motion Displacement Threshold (m)", 0.03, 0.15, 0.06, 0.01)
 
-st.sidebar.subheader("Disambiguation Filter")
+st.sidebar.subheader("Line-of-Sight Filter")
 surface_eps = st.sidebar.slider("Surface Thickness Epsilon (m)", 0.02, 0.08, 0.04, 0.005)
 
-# Pipeline Cache
 @st.cache_resource
 def get_pipeline(v_size, s_thresh, m_thresh, s_eps):
     p = ChronoScenePipeline(
@@ -113,11 +99,11 @@ def get_pipeline(v_size, s_thresh, m_thresh, s_eps):
 pipeline = get_pipeline(voxel_size, static_thresh, motion_thresh, surface_eps)
 
 # Execution
-if mode == "Indoor Benchmark (Instant)":
-    st.info("💡 **Benchmark Mode**: Evaluating dual camera trajectory sweeps over a tabletop robotics workspace with known moved, added, removed, and occluded objects.")
+if mode == "Indoor Tabletop Benchmark":
+    st.info("Benchmark Scenario: Evaluates two camera trajectories over a robotics manipulation workspace with known moved, added, removed, and out-of-view objects.")
 
-    if st.button("🚀 Run ChronoScene-3D Analysis", type="primary"):
-        with st.spinner("Synthesizing indoor phone scans and performing 3D spatial reasoning..."):
+    if st.button("Run Spatial Differencing Pipeline", type="primary"):
+        with st.spinner("Processing multi-view scans and computing line-of-sight visibility..."):
             gen = IndoorBenchmarkGenerator(width=480, height=360, fov_deg=65.0)
             scan_a, scan_b, gt_deltas = gen.generate_benchmark_pair(num_frames=12)
 
@@ -135,16 +121,16 @@ if mode == "Indoor Benchmark (Instant)":
             st.session_state["scan_b"] = scan_b
 
 else:
-    st.subheader("Upload Two Casual Phone Recordings")
+    st.subheader("Upload Two Phone Video Recordings")
     col_u1, col_u2 = st.columns(2)
     with col_u1:
-        vid_a = st.file_uploader("Scan A (Reference Time t1)", type=["mp4", "mov", "avi"])
+        vid_a = st.file_uploader("Scan A (Reference Time 1)", type=["mp4", "mov", "avi"])
     with col_u2:
-        vid_b = st.file_uploader("Scan B (Query Time t2)", type=["mp4", "mov", "avi"])
+        vid_b = st.file_uploader("Scan B (Query Time 2)", type=["mp4", "mov", "avi"])
 
     if vid_a and vid_b:
-        if st.button("Process Custom Phone Recordings", type="primary"):
-            with st.spinner("Decoding video keyframes and estimating 3D scene..."):
+        if st.button("Process Phone Recordings", type="primary"):
+            with st.spinner("Extracting keyframes and executing pipeline..."):
                 os.makedirs("data/uploads", exist_ok=True)
                 path_a = os.path.join("data/uploads", vid_a.name)
                 path_b = os.path.join("data/uploads", vid_b.name)
@@ -169,13 +155,12 @@ if "results" in st.session_state:
     scan_b = st.session_state["scan_b"]
 
     st.markdown("---")
-    # Top Metrics
     m1, m2, m3, m4 = st.columns(4)
     with m1:
         st.markdown(f"""
         <div class="metric-card">
             <div class="metric-val">{results.classification.metrics.get('static_percentage', 0)}%</div>
-            <div class="metric-lbl">Static Invariance</div>
+            <div class="metric-lbl">Static Invariance Ratio</div>
         </div>
         """, unsafe_allow_html=True)
     with m2:
@@ -203,9 +188,9 @@ if "results" in st.session_state:
         </div>
         """, unsafe_allow_html=True)
 
-    st.markdown("### 🌐 Interactive 3D Spatial Differencing Viewer")
+    st.markdown("### 3D Spatial Differencing Results")
     tab3d, tab_keyframes, tab_report, tab_robot = st.tabs([
-        "Three.js 3D WebGL Viewer", "Keyframes Comparison", "Executive Spatial Report", "Robotic Embodied Plan"
+        "Interactive 3D WebGL Viewer", "Keyframe Inspection", "Spatial Intelligence Report", "Robotic Action Directives"
     ])
 
     with tab3d:
@@ -224,15 +209,15 @@ if "results" in st.session_state:
             st.plotly_chart(fig, use_container_width=True)
 
     with tab_keyframes:
-        st.subheader("Dual Trajectory Keyframe Inspection")
+        st.subheader("Keyframe Trajectory Comparison")
         col_ka, col_kb = st.columns(2)
         with col_ka:
-            st.markdown("**Scan A Keyframes (Time t1)**")
+            st.markdown("**Scan A Keyframes (Time 1)**")
             if scan_a and scan_a.rgb_frames:
                 idx_a = st.slider("Scan A Frame", 0, len(scan_a.rgb_frames)-1, 0)
                 st.image(scan_a.rgb_frames[idx_a], use_container_width=True)
         with col_kb:
-            st.markdown("**Scan B Keyframes (Time t2)**")
+            st.markdown("**Scan B Keyframes (Time 2)**")
             if scan_b and scan_b.rgb_frames:
                 idx_b = st.slider("Scan B Frame", 0, len(scan_b.rgb_frames)-1, 0)
                 st.image(scan_b.rgb_frames[idx_b], use_container_width=True)
@@ -241,18 +226,18 @@ if "results" in st.session_state:
         st.markdown(results.report.to_markdown())
 
     with tab_robot:
-        st.subheader("🤖 Embodied Robotic Action Directives (Pick-and-Place)")
-        st.write("Structured machine-executable instructions generated from 3D object deltas:")
+        st.subheader("Robotic Manipulation Directives (6-DoF Pick-and-Place)")
+        st.write("Structured machine-executable instructions derived from 3D object deltas:")
         st.json(results.report.robotic_manipulation_plan)
 
     st.markdown("---")
-    st.subheader("📥 Export Deliverables")
+    st.subheader("Export Deliverables")
     col_d1, col_d2, col_d3 = st.columns(3)
     with col_d1:
         if os.path.exists(results.viewer_html_path):
             with open(results.viewer_html_path, "r", encoding="utf-8") as f:
                 st.download_button(
-                    "💾 Download 3D Viewer (HTML)",
+                    "Download 3D Viewer (HTML)",
                     f.read(),
                     file_name="viewer_3d.html",
                     mime="text/html"
@@ -261,7 +246,7 @@ if "results" in st.session_state:
         if os.path.exists(results.action_json_path):
             with open(results.action_json_path, "r", encoding="utf-8") as f:
                 st.download_button(
-                    "💾 Download Action Plan (JSON)",
+                    "Download Action Plan (JSON)",
                     f.read(),
                     file_name="robotic_action_plan.json",
                     mime="application/json"
@@ -270,7 +255,7 @@ if "results" in st.session_state:
         if os.path.exists(results.report_md_path):
             with open(results.report_md_path, "r", encoding="utf-8") as f:
                 st.download_button(
-                    "💾 Download Full Report (MD)",
+                    "Download Change Report (MD)",
                     f.read(),
                     file_name="change_report.md",
                     mime="text/markdown"

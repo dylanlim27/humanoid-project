@@ -79,21 +79,21 @@ def main():
     args = parse_args()
 
     print("=" * 70)
-    print("🎥 ChronoScene-3D Video Processing CLI")
+    print("ChronoScene-3D: Monocular Video Processing CLI")
     print("=" * 70)
-    print(f"• Video A (Scan 1): {args.video_a}")
-    print(f"• Video B (Scan 2): {args.video_b}")
-    print(f"• Output Directory: {args.output_dir}")
+    print(f"- Scan A (Reference): {args.video_a}")
+    print(f"- Scan B (Query):     {args.video_b}")
+    print(f"- Output Directory:   {args.output_dir}")
 
     loader = PhoneVideoLoader(target_width=640, fov_degrees=args.fov)
 
-    print("\n[Step 1/3] Extracting keyframes and filtering motion blur from Video A...")
+    print("\n[Step 1/3] Extracting keyframes and filtering blur from Scan A...")
     scan_a = loader.load_video(args.video_a, max_keyframes=args.max_frames, scan_id="A")
-    print(f"  ✓ Extracted {len(scan_a.rgb_frames)} keyframes (duration: {scan_a.duration_sec:.1f}s)")
+    print(f"  - Keyframes extracted: {len(scan_a.rgb_frames)} (duration: {scan_a.duration_sec:.1f}s)")
 
-    print("\n[Step 2/3] Extracting keyframes and filtering motion blur from Video B...")
+    print("\n[Step 2/3] Extracting keyframes and filtering blur from Scan B...")
     scan_b = loader.load_video(args.video_b, max_keyframes=args.max_frames, scan_id="B")
-    print(f"  ✓ Extracted {len(scan_b.rgb_frames)} keyframes (duration: {scan_b.duration_sec:.1f}s)")
+    print(f"  - Keyframes extracted: {len(scan_b.rgb_frames)} (duration: {scan_b.duration_sec:.1f}s)")
 
     print("\n[Step 3/3] Initializing Depth Estimator & ChronoScene-3D Pipeline...")
     depth_estimator = PyTorchDepthEstimator(model_type="MiDaS_small")
@@ -111,9 +111,9 @@ def main():
     elapsed = time.time() - start_time
 
     print("\n" + "=" * 70)
-    print(f"✅ Finished in {elapsed:.2f} seconds!")
-    print(f"🌐 Open 3D Viewer: file:///{os.path.abspath(results.viewer_html_path)}")
-    print(f"📄 View Report:   file:///{os.path.abspath(results.report_md_path)}")
+    print(f"Processing Complete: {elapsed:.2f} seconds")
+    print(f"3D Web Viewer: file:///{os.path.abspath(results.viewer_html_path)}")
+    print(f"Report (MD):   file:///{os.path.abspath(results.report_md_path)}")
     print("=" * 70)
 
 

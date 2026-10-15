@@ -257,34 +257,34 @@ def generate_threejs_viewer_html(
 
     <!-- Controls Panel -->
     <div class="hud-panel" id="controls-panel">
-        <h2>🌐 ChronoScene-3D</h2>
+        <h2>ChronoScene-3D</h2>
         <p style="font-size: 0.8rem; color: #8b949e; margin-bottom: 12px;">
-            Embodied 3D Scene Differencing & Spatial Change Grounding
+            Multi-View 3D Spatial Differencing & Change Grounding
         </p>
 
-        <h3>Layers & Visibility</h3>
+        <h3>Layers and Visibility</h3>
         <div class="toggle-row">
-            <span><span class="badge badge-added">●</span> Added Objects</span>
+            <span><span class="badge badge-added"></span> Added Objects</span>
             <input type="checkbox" id="toggle-added" checked>
         </div>
         <div class="toggle-row">
-            <span><span class="badge badge-removed">●</span> Removed Objects</span>
+            <span><span class="badge badge-removed"></span> Removed Objects</span>
             <input type="checkbox" id="toggle-removed" checked>
         </div>
         <div class="toggle-row">
-            <span><span class="badge badge-occluded">●</span> Occluded / Unobserved</span>
+            <span><span class="badge badge-occluded"></span> Occluded / Unobserved</span>
             <input type="checkbox" id="toggle-occluded" checked>
         </div>
         <div class="toggle-row">
-            <span><span class="badge badge-static">●</span> Static Background</span>
+            <span><span class="badge badge-static"></span> Static Background</span>
             <input type="checkbox" id="toggle-static" checked>
         </div>
         <div class="toggle-row">
-            <span>📦 3D Bounding Boxes</span>
+            <span>Oriented Bounding Boxes</span>
             <input type="checkbox" id="toggle-boxes" checked>
         </div>
         <div class="toggle-row">
-            <span>📹 Trajectories & Frustums</span>
+            <span>Camera Trajectories and Frustums</span>
             <input type="checkbox" id="toggle-cameras" checked>
         </div>
 
@@ -294,16 +294,16 @@ def generate_threejs_viewer_html(
             <input type="range" id="slider-point-size" min="1" max="10" value="4" style="width: 100px;">
         </div>
 
-        <button class="btn" id="btn-reset-view">🎯 Reset Camera View</button>
+        <button class="btn" id="btn-reset-view">Reset Camera View</button>
     </div>
 
     <!-- Info & Report Panel -->
     <div class="hud-panel" id="info-panel">
-        <h2>📊 Spatial Intelligence</h2>
+        <h2>Scene Diagnostics</h2>
         <div class="metric-card">
             <div class="metric-box">
                 <div class="metric-value" id="val-static-pct">--%</div>
-                <div class="metric-label">Static Scene Invariance</div>
+                <div class="metric-label">Static Invariance Ratio</div>
             </div>
             <div class="metric-box">
                 <div class="metric-value" id="val-occ-pct">--%</div>
