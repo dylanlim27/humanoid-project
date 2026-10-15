@@ -44,48 +44,19 @@ ChronoScene-3D addresses this by:
 
 ```mermaid
 flowchart TD
-    subgraph Inputs["1. Dual Phone Video Inputs"]
-        VA["Scan A (Reference Video at t1)"]
-        VB["Scan B (Query Video at t2)"]
-    end
-
-    subgraph Lifting["2. 3D Lifting and Co-Registration"]
-        PoseA["Pose Estimation / Trajectory A"]
-        PoseB["Pose Estimation / Trajectory B"]
-        DepthA["Metric Depth Maps A"]
-        DepthB["Metric Depth Maps B"]
-        Reg["Background SE(3) Co-Registration (Kabsch + ICP)"]
-    end
-
-    VA --> PoseA & DepthA
-    VB --> PoseB & DepthB
-    PoseA & PoseB & DepthA & DepthB --> Reg
-
-    subgraph Raycast["3. Multi-View Line-of-Sight Raycasting Engine"]
-        SharedPCD["Unified 3D Point Cloud"]
-        LOS["Ray-Buffer LOS Disambiguation (Free Space vs Occluded vs Hit)"]
-        Classify["Voxel State Classifier: Static / Added / Removed / Occluded / Out-of-View"]
-    end
-
-    Reg --> SharedPCD --> LOS --> Classify
-
-    subgraph Reasoning["4. 3D Object Reasoning and Instance Matching"]
-        Clustering["3D Euclidean Clustering and PCA Bounding Boxes"]
-        Hungarian["Bipartite Hungarian Matching (Spatial + Volume + Color)"]
-        RoboAction["Embodied 6-DoF Pick-and-Place Action Vectors"]
-        VLMNarrative["Multimodal Spatial Change Narrative"]
-    end
-
-    Classify --> Clustering --> Hungarian --> RoboAction & VLMNarrative
-
-    subgraph Deliverables["5. Deliverables"]
-        Web3D["Standalone Three.js 3D WebGL Viewer (HTML)"]
-        StreamlitUI["Interactive Streamlit Dashboard"]
-        JSONPlan["Machine-Readable Robotic Action Directives (JSON)"]
-        MDReport["Executive Spatial Intelligence Report (MD)"]
-    end
-
-    RoboAction & VLMNarrative --> Web3D & StreamlitUI & JSONPlan & MDReport
+    ScanA[Scan A Video - Reference at t1] --> FeatA[Keyframe Poses and Depth A]
+    ScanB[Scan B Video - Query at t2] --> FeatB[Keyframe Poses and Depth B]
+    FeatA --> Align[SE3 Background Co-Registration]
+    FeatB --> Align
+    Align --> PointCloud[Unified Metric 3D Point Cloud]
+    PointCloud --> Raycast[Line-of-Sight Raycasting Engine]
+    Raycast --> Classify[Voxel State Classifier]
+    Classify --> Clusters[3D Euclidean Clustering and Bounding Boxes]
+    Clusters --> Matcher[Bipartite Hungarian Matching]
+    Matcher --> Action[6-DoF Robotic Action Vectors]
+    Matcher --> Report[Spatial Change Narrative]
+    Action --> Deliverables[Interactive 3D WebGL Viewer and JSON Plan]
+    Report --> Deliverables
 ```
 
 ---
@@ -93,27 +64,23 @@ flowchart TD
 ## 3. Mathematical Formulation
 
 ### 3.1 Point Cloud Backprojection
-Given camera intrinsics matrix $K$ and camera-to-world pose $T_{w \leftarrow c_k} \in \mathrm{SE}(3)$ for keyframe $k$, a pixel coordinate $(u, v)$ with scalar depth $d = D_k(u, v)$ unprojects to 3D world coordinates $p \in \mathbb{R}^3$:
+Given camera intrinsics matrix $K$ and camera-to-world pose $T_{wc}^{(k)} \in \mathrm{SE}(3)$ for keyframe $k$, a pixel coordinate $(u, v)$ with scalar depth $d = D_k(u, v)$ unprojects to 3D world coordinates $p \in \mathbb{R}^3$:
 
-$$p = T_{w \leftarrow c_k} \left( d \cdot K^{-1} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} \right)$$
+$$p = T_{wc}^{(k)} \left( d \cdot K^{-1} \begin{bmatrix} u \\ v \\ 1 \end{bmatrix} \right)$$
 
 ### 3.2 Multi-View Observation Classification
-For any query voxel center $v$ projected into keyframe $k$ with camera-frame depth $z_c$:
+For any query voxel center $v$ projected into keyframe $k$ with camera-frame depth $z_c$ and surface tolerance $\epsilon$ (default 4 cm):
 
-$$\Omega_k(v) = \begin{cases}
-\text{FrustumOut} & \text{if } u \notin [0, W) \text{ or } v \notin [0, H) \text{ or } z_c \le 0 \\
-\text{FreeSpace} & \text{if } z_c < D_k(u, v) - \epsilon \\
-\text{SurfaceHit} & \text{if } |z_c - D_k(u, v)| \le \epsilon \\
-\text{Occluded} & \text{if } z_c > D_k(u, v) + \epsilon
-\end{cases}$$
-
-where $\epsilon$ denotes surface tolerance (default 4 cm).
+- **FreeSpace**: $z_c < D_k(u, v) - \epsilon$ (camera ray traversed empty space)
+- **SurfaceHit**: $|z_c - D_k(u, v)| \le \epsilon$ (camera ray intercepted surface)
+- **Occluded**: $z_c > D_k(u, v) + \epsilon$ (query voxel is behind a closer foreground obstacle)
+- **FrustumOut**: $u \notin [0, W)$ or $v \notin [0, H)$ or $z_c \le 0$ (outside camera field of view)
 
 ### 3.3 Change Disambiguation Across Dual Passes
-- **Static**: Point $p_A$ in Scan A has a spatial neighbor in Scan B within Euclidean distance $\tau_{\text{static}}$ (4 cm).
-- **Removed**: Point $p_A$ has no neighbor in Scan B, and there exists at least one view $k$ in Scan B where $\Omega_k(p_A) = \text{FreeSpace}$ (the camera verified line-of-sight through that volume without collision).
-- **Added**: Point $p_B$ has no neighbor in Scan A, and there exists at least one view in Scan A where $\Omega_k(p_B) = \text{FreeSpace}$.
-- **Occluded / Out-of-View**: Points where all opposing views yielded $\text{Occluded}$ or $\text{FrustumOut}$. These points are excluded from the change set, preventing false positive alerts from incomplete trajectories.
+- **Static**: Point $p_A$ in Scan A has a spatial neighbor in Scan B within Euclidean distance threshold (4 cm).
+- **Removed**: Point $p_A$ has no neighbor in Scan B, and there exists at least one view in Scan B where the voxel is verified as FreeSpace (the camera verified line-of-sight through that volume without collision).
+- **Added**: Point $p_B$ has no neighbor in Scan A, and there exists at least one view in Scan A where the voxel is verified as FreeSpace.
+- **Occluded / Out-of-View**: Points where all opposing views yielded Occluded or FrustumOut. These points are excluded from the change set, preventing false positive alerts from incomplete trajectories.
 
 ---
 
